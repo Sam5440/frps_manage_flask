@@ -1,15 +1,23 @@
 from flask import Flask, render_template, request, redirect, url_for, session
-import configparser,os,shutil,datetime
+import configparser, os, shutil, datetime
 from flask_session import Session
 
+# 读取配置文件
+def load_app_config(filename='config.ini'):
+    config = configparser.ConfigParser()
+    config.read(filename)
+    return config
+
+app_config = load_app_config()
+
 app = Flask(__name__)
-app.secret_key = 'your_secret_key'  # 替换为您的实际密钥
-app.config['SESSION_TYPE'] = 'filesystem'
+app.secret_key = app_config['flask']['secret_key']
+app.config['SESSION_TYPE'] = app_config['flask']['session_type']
 Session(app)
 
-# 假设的用户名和密码
-USERNAME = 'admin'
-PASSWORD = 'password'
+# 从配置文件中获取用户名和密码
+USERNAME = app_config['auth']['username']
+PASSWORD = app_config['auth']['password']
 
 def read_config():
     config = configparser.ConfigParser()
@@ -157,4 +165,6 @@ def debug():
     return render_template('debug.html', config_content=config_content)
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    port = int(app_config['flask']['port'])
+    host = app_config['flask']['host']
+    app.run(debug=True, port=port, host=host)
