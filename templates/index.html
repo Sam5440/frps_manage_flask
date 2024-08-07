@@ -29,6 +29,13 @@
             background-color: yellow;
             color: black;
         }
+        .error {
+            border: 2px solid red;
+        }
+        .error-message {
+            color: red;
+            display: none;
+        }
     </style>
     <script>
         function toggleEdit(section) {
@@ -47,6 +54,26 @@
                 }
                 saveButton.disabled = !saveButton.disabled;
             }
+        }
+
+        function validateSectionName() {
+            var newSectionInput = document.getElementById('new-section-input');
+            var existingSections = {{ config.sections() | tojson }};
+            var errorMessage = document.getElementById('error-message');
+
+            if (existingSections.includes(newSectionInput.value.trim())) {
+                newSectionInput.classList.add('error');
+                errorMessage.style.display = 'block';
+                return false;
+            } else {
+                newSectionInput.classList.remove('error');
+                errorMessage.style.display = 'none';
+                return true;
+            }
+        }
+
+        function validateForm() {
+            return validateSectionName();
         }
     </script>
 </head>
@@ -102,9 +129,15 @@
             {% endfor %}
             <tr>
                 <td colspan="7">
-                    <form action="{{ url_for('add') }}" method="post">
-                        <input type="text" name="new_section" placeholder="New Section Name">
+                    <form action="{{ url_for('add') }}" method="post" onsubmit="return validateForm()">
+                        <input type="text" id="new-section-input" name="new_section" placeholder="New Section Name" required oninput="validateSectionName()">
+                        <input type="text" name="type" placeholder="Type" required>
+                        <input type="text" name="local_ip" placeholder="Local IP" required>
+                        <input type="text" name="local_port" placeholder="Local Port" required>
+                        <input type="text" name="remote_port" placeholder="Remote Port" required>
+                        <input type="text" name="custom_domains" placeholder="Custom Domains">
                         <input type="submit" value="Add Section">
+                        <div id="error-message" class="error-message">Section name already exists!</div>
                     </form>
                 </td>
             </tr>

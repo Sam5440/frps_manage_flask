@@ -7,11 +7,19 @@ type = tcp
 local_ip = 192.168.123.771
 local_port = 20
 remote_port = 20
-# custom_domains =
 
 [Fd77p20To20]
 type = tcp
 local_ip = 192.168.123.771
 local_port = 20
 remote_port = 20
+
+[111]
+
+[222]
+type = 22
+local_ip = 22
+local_port = 22
+remote_port = 22
+# custom_domains =
 

@@ -1,3 +1,4 @@
+# 这是一个在网页修改frpc配置文件的程序
 from flask import Flask, render_template, request, redirect, url_for
 import configparser
 import shutil
@@ -109,8 +110,20 @@ def update_common():
 def add():
     config = read_config()
     new_section = request.form['new_section']
-    if new_section and new_section not in config:
-        config[new_section] = {'type': '', 'local_ip': '', 'local_port': '', 'remote_port': '', 'custom_domains': ''}
+    type_ = request.form['type']
+    local_ip = request.form['local_ip']
+    local_port = request.form['local_port']
+    remote_port = request.form['remote_port']
+    custom_domains = request.form['custom_domains']
+
+    if new_section and new_section not in config and type_ and local_ip and local_port and remote_port:
+        config[new_section] = {
+            'type': type_,
+            'local_ip': local_ip,
+            'local_port': local_port,
+            'remote_port': remote_port,
+            'custom_domains': custom_domains
+        }
         write_config(config)
     return redirect(url_for('index'))
 
