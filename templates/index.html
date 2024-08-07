@@ -32,54 +32,35 @@
     </style>
     <script>
         function toggleEdit(section) {
-            var form = document.getElementById(section + '-form');
-            var inputs = form.querySelectorAll('input[type="text"]');
-            var saveButton = form.querySelector('input[type="submit"][value="Save"]');
-            for (var i = 0; i < inputs.length; i++) {
-                inputs[i].disabled = !inputs[i].disabled;
+            if (section == 'common') {
+                var form = document.getElementById(section + '-form');
+                var textarea = form.querySelector('textarea');
+                var saveButton = form.querySelector('input[type="submit"]');
+                textarea.disabled = !textarea.disabled;
+                saveButton.disabled = !saveButton.disabled;
+            } else {
+                var form = document.getElementById(section + '-form');
+                var inputs = form.querySelectorAll('input[type="text"]');
+                var saveButton = form.querySelector('input[type="submit"][value="Save"]');
+                for (var i = 0; i < inputs.length; i++) {
+                    inputs[i].disabled = !inputs[i].disabled;
+                }
+                saveButton.disabled = !saveButton.disabled;
             }
-            saveButton.disabled = !saveButton.disabled;
         }
     </script>
 </head>
 <body>
     <h1>FRPC Config Editor</h1>
     
-    <!-- Display common section separately -->
+    <!-- 直接编辑文本形式的common部分 -->
     <h2>Common Section</h2>
-    <table>
-        <thead>
-            <tr>
-                <th>Option</th>
-                <th>Value</th>
-                <th>Action</th>
-            </tr>
-        </thead>
-        <tbody>
-            <form id="common-form" action="{{ url_for('update', section='common') }}" method="post">
-                {% for option in config['common'] %}
-                    <tr>
-                        <td>{{ option }}</td>
-                        <td><input type="text" name="{{ option }}" value="{{ config['common'][option] }}" disabled></td>
-                        {% if loop.first %}
-                            <td rowspan="{{ config['common']|length }}">
-                                <input type="button" value="Edit" onclick="toggleEdit('common')">
-                                <input type="submit" value="Save" disabled>
-                            </td>
-                        {% endif %}
-                    </tr>
-                {% endfor %}
-            </form>
-            <tr>
-                <td colspan="3">
-                    <form action="{{ url_for('add_option', section='common') }}" method="post">
-                        <input type="text" name="new_option" placeholder="New Option">
-                        <input type="submit" value="Add Option">
-                    </form>
-                </td>
-            </tr>
-        </tbody>
-    </table>
+    <form id="common-form" action="{{ url_for('update_common') }}" method="post">
+        <textarea id="common-config" name="common_config" style="width: 100%; height: 200px;" disabled>{{ common_config }}</textarea>
+        <br>
+        <input type="button" value="Edit" onclick="toggleEdit('common')">
+        <input type="submit" value="Save" disabled>
+    </form>
 
     <!-- Display other sections as Excel-like table -->
     <h2>Other Sections</h2>
