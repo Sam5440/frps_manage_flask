@@ -47,10 +47,16 @@ def write_config(config):
 
 def write_common_section(common_config):
     _, other_lines = read_common_section()
+    common_lines = common_config.split('\n')
     with open(CONFIG_PATH, 'w', encoding='utf-8') as file:
-        file.write('[common]\n' + common_config + '\n')
+        file.write('[common]\n')
+        for line in common_lines:
+            file.write(line.rstrip() + '\n')
+        file.write('\n')
         for line in other_lines:
             file.write(line)
+
+
 
 @app.route('/')
 def index():
