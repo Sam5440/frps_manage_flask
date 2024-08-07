@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FRPC Config Editor</title>
+    <style>
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            border: 1px solid black;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        .tcp {
+            background-color: blue;
+            color: white;
+        }
+        .udp {
+            background-color: orange;
+            color: white;
+        }
+        .all {
+            background-color: yellow;
+            color: black;
+        }
+    </style>
+    <script>
+        function toggleEdit(section) {
+            var form = document.getElementById(section + '-form');
+            if (!form) {
+                console.error('Form not found for section:', section);
+                return;
+            }
+
+            if (section === 'common') {
+                var textarea = form.querySelector('textarea');
+                var saveButton = form.querySelector('input[type="submit"][value="Save"]');
+                if (textarea && saveButton) {
+                    textarea.disabled = !textarea.disabled;
+                    saveButton.disabled = !saveButton.disabled;
+                } else {
+                    console.error('Textarea or Save button not found in common section form');
+                }
+            } else {
+                var inputs = form.querySelectorAll('input[type="text"]');
+                var saveButton = form.querySelector('input[type="submit"][value="Save"]');
+                if (inputs.length > 0 && saveButton) {
+                    inputs.forEach(input => {
+                        input.disabled = !input.disabled;
+                    });
+                    saveButton.disabled = !saveButton.disabled;
+                } else {
+                    console.error('Inputs or Save button not found in section form:', section);
+                }
+            }
+        }
+    </script>
+</head>
+<body>
+    <h1>FRPC Config Editor</h1>
+    
+    <!-- Display common section as text area -->
+    <h2>Common Section</h2>
+    <form id="common-form" action="{{ url_for('update_common') }}" method="post">
+        <textarea name="common_content" rows="10" cols="80" disabled>{{ common_content }}</textarea><br>
+        <input type="button" value="Edit" onclick="toggleEdit('common')">
+        <input type="submit" value="Save" disabled>
+    </form>
+
+    <!-- Display other sections as Excel-like table -->
+    <h2>Other Sections</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Section</th>
+                <th>Type</th>
+                <th>Local IP</th>
+                <th>Local Port</th>
+                <th>Remote Port</th>
+                <th>Custom Domains</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for section in config.sections() %}
+                {% if section != 'common' %}
+                    <form id="{{ section }}-form" action="{{ url_for('update', section=section) }}" method="post">
+                        <tr>
+                            <td><input type="text" name="new_section" value="{{ section }}" disabled></td>
+                            <td class="{{ config[section].get('type', '') }}"><input type="text" name="type" value="{{ config[section].get('type', '') }}" disabled></td>
+                            <td><input type="text" name="local_ip" value="{{ config[section].get('local_ip', '') }}" disabled></td>
+                            <td><input type="text" name="local_port" value="{{ config[section].get('local_port', '') }}" disabled></td>
+                            <td><input type="text" name="remote_port" value="{{ config[section].get('remote_port', '') }}" disabled></td>
+                            <td><input type="text" name="custom_domains" value="{{ config[section].get('custom_domains', '') }}" disabled></td>
+                            <td>
+                                <input type="button" value="Edit" onclick="toggleEdit('{{ section }}')">
+                                <input type="submit" value="Save" disabled>
+                            </td>
+                        </tr>
+                    </form>
+                    <tr>
+                        <td colspan="7">
+                            <form action="{{ url_for('delete', section=section) }}" method="post">
+                                <input type="submit" value="Delete Section">
+                            </form>
+                        </td>
+                    </tr>
+                {% endif %}
+            {% endfor %}
+            <tr>
+                <td colspan="7">
+                    <form action="{{ url_for('add') }}" method="post">
+                        <input type="text" name="new_section" placeholder="New Section Name">
+                        <input type="submit" value="Add Section">
+                    </form>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+</body>
+</html>
