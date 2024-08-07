@@ -13,42 +13,19 @@ def read_config():
 
 def write_config(config):
     with open(CONFIG_PATH, 'w', encoding='utf-8') as file:
-        if 'common' in config:
-            file.write('[common]\n')
-            for key in config['common']:
-                if config['common'][key] is None or config['common'][key].strip() == '':
+        for section in config.sections():
+            file.write(f'[{section}]\n')
+            for key in config[section]:
+                if config[section][key] is None or config[section][key].strip() == '':
                     file.write(f'# {key} =\n')
                 else:
-                    file.write(f"{key} = {config['common'][key]}\n")
+                    file.write(f'{key} = {config[section][key]}\n')
             file.write('\n')
-        for section in config.sections():
-            if section != 'common':
-                file.write(f'[{section}]\n')
-                for key in config[section]:
-                    if config[section][key] is None or config[section][key].strip() == '':
-                        file.write(f'# {key} =\n')
-                    else:
-                        file.write(f'{key} = {config[section][key]}\n')
-                file.write('\n')
 
 @app.route('/')
 def index():
     config = read_config()
-    common_content = '\n'.join([f'{key} = {value}' for key, value in config['common'].items()])
-    return render_template('index.html', config=config, common_content=common_content)
-
-@app.route('/update_common', methods=['POST'])
-def update_common():
-    config = read_config()
-    common_content = request.form['common_content']
-    config.remove_section('common')
-    config.add_section('common')
-    for line in common_content.split('\n'):
-        if '=' in line:
-            key, value = line.split('=', 1)
-            config.set('common', key.strip(), value.strip())
-    write_config(config)
-    return redirect(url_for('index'))
+    return render_template('index.html', config=config)
 
 @app.route('/update/<section>', methods=['POST'])
 def update(section):

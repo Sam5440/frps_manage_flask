@@ -33,45 +33,53 @@
     <script>
         function toggleEdit(section) {
             var form = document.getElementById(section + '-form');
-            if (!form) {
-                console.error('Form not found for section:', section);
-                return;
+            var inputs = form.querySelectorAll('input[type="text"]');
+            var saveButton = form.querySelector('input[type="submit"][value="Save"]');
+            for (var i = 0; i < inputs.length; i++) {
+                inputs[i].disabled = !inputs[i].disabled;
             }
-
-            if (section === 'common') {
-                var textarea = form.querySelector('textarea');
-                var saveButton = form.querySelector('input[type="submit"][value="Save"]');
-                if (textarea && saveButton) {
-                    textarea.disabled = !textarea.disabled;
-                    saveButton.disabled = !saveButton.disabled;
-                } else {
-                    console.error('Textarea or Save button not found in common section form');
-                }
-            } else {
-                var inputs = form.querySelectorAll('input[type="text"]');
-                var saveButton = form.querySelector('input[type="submit"][value="Save"]');
-                if (inputs.length > 0 && saveButton) {
-                    inputs.forEach(input => {
-                        input.disabled = !input.disabled;
-                    });
-                    saveButton.disabled = !saveButton.disabled;
-                } else {
-                    console.error('Inputs or Save button not found in section form:', section);
-                }
-            }
+            saveButton.disabled = !saveButton.disabled;
         }
     </script>
 </head>
 <body>
     <h1>FRPC Config Editor</h1>
     
-    <!-- Display common section as text area -->
+    <!-- Display common section separately -->
     <h2>Common Section</h2>
-    <form id="common-form" action="{{ url_for('update_common') }}" method="post">
-        <textarea name="common_content" rows="10" cols="80" disabled>{{ common_content }}</textarea><br>
-        <input type="button" value="Edit" onclick="toggleEdit('common')">
-        <input type="submit" value="Save" disabled>
-    </form>
+    <table>
+        <thead>
+            <tr>
+                <th>Option</th>
+                <th>Value</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            <form id="common-form" action="{{ url_for('update', section='common') }}" method="post">
+                {% for option in config['common'] %}
+                    <tr>
+                        <td>{{ option }}</td>
+                        <td><input type="text" name="{{ option }}" value="{{ config['common'][option] }}" disabled></td>
+                        {% if loop.first %}
+                            <td rowspan="{{ config['common']|length }}">
+                                <input type="button" value="Edit" onclick="toggleEdit('common')">
+                                <input type="submit" value="Save" disabled>
+                            </td>
+                        {% endif %}
+                    </tr>
+                {% endfor %}
+            </form>
+            <tr>
+                <td colspan="3">
+                    <form action="{{ url_for('add_option', section='common') }}" method="post">
+                        <input type="text" name="new_option" placeholder="New Option">
+                        <input type="submit" value="Add Option">
+                    </form>
+                </td>
+            </tr>
+        </tbody>
+    </table>
 
     <!-- Display other sections as Excel-like table -->
     <h2>Other Sections</h2>
@@ -90,8 +98,8 @@
         <tbody>
             {% for section in config.sections() %}
                 {% if section != 'common' %}
-                    <form id="{{ section }}-form" action="{{ url_for('update', section=section) }}" method="post">
-                        <tr>
+                    <tr id="{{ section }}-form">
+                        <form action="{{ url_for('update', section=section) }}" method="post">
                             <td><input type="text" name="new_section" value="{{ section }}" disabled></td>
                             <td class="{{ config[section].get('type', '') }}"><input type="text" name="type" value="{{ config[section].get('type', '') }}" disabled></td>
                             <td><input type="text" name="local_ip" value="{{ config[section].get('local_ip', '') }}" disabled></td>
@@ -102,10 +110,8 @@
                                 <input type="button" value="Edit" onclick="toggleEdit('{{ section }}')">
                                 <input type="submit" value="Save" disabled>
                             </td>
-                        </tr>
-                    </form>
-                    <tr>
-                        <td colspan="7">
+                        </form>
+                        <td>
                             <form action="{{ url_for('delete', section=section) }}" method="post">
                                 <input type="submit" value="Delete Section">
                             </form>
