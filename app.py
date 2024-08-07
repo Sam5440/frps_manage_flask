@@ -1,112 +1,119 @@
-# 这是一个在网页修改frpc配置文件的程序
-from flask import Flask, render_template, request, redirect, url_for
-import configparser
-import shutil
-import os
+from flask import Flask, render_template, request, redirect, url_for, session
+import configparser,os,shutil,datetime
+from flask_session import Session
 
 app = Flask(__name__)
+app.secret_key = 'your_secret_key'  # 替换为您的实际密钥
+app.config['SESSION_TYPE'] = 'filesystem'
+Session(app)
 
-# 配置文件路径
-CONFIG_PATH = 'frpc.ini'
-BACKUP_PATH = 'frpc.ini.bak'
-
-def backup_config():
-    shutil.copyfile(CONFIG_PATH, BACKUP_PATH)
-
-def restore_config():
-    shutil.copyfile(BACKUP_PATH, CONFIG_PATH)
+# 假设的用户名和密码
+USERNAME = 'admin'
+PASSWORD = 'password'
 
 def read_config():
-    config = configparser.ConfigParser(allow_no_value=True)
-    config.read(CONFIG_PATH, encoding='utf-8')
+    config = configparser.ConfigParser()
+    config.read('frpc.ini')
     return config
 
-def read_common_section():
-    with open(CONFIG_PATH, 'r') as file:
-        lines = file.readlines()
-        common_section = ''
-        common_found = False
-        common_lines = []
-        other_lines = []
-        for line in lines:
-            if line.strip() == '[common]':
-                common_found = True
-            elif common_found and line.strip().startswith('['):
-                common_found = False
-            if common_found:
-                common_lines.append(line)
-            else:
-                other_lines.append(line)
-        common_section = ''.join(common_lines[1:]).rstrip()  # 去除"[common]"和最后的空行
-        return common_section, other_lines
+def write_config(config, filename='frpc.ini', backup_folder='backup'):
+    # 确保备份文件夹存在
+    if not os.path.exists(backup_folder):
+        os.makedirs(backup_folder)
 
-def write_config(config):
-    backup_config()
-    try:
-        common_config, _ = read_common_section()
-        with open(CONFIG_PATH, 'w', encoding='utf-8') as file:
-            file.write('[common]\n' + common_config + '\n\n')
-            for section in config.sections():
-                if section != 'common':
-                    file.write(f'[{section}]\n')
-                    for key in config[section]:
-                        if config[section][key] is None or config[section][key].strip() == '':
-                            file.write(f'# {key} =\n')
-                        else:
-                            file.write(f'{key} = {config[section][key]}\n')
-                    file.write('\n')
-        # 尝试读取新的配置文件，如果失败，恢复原始配置
-        read_config()
-    except Exception as e:
-        restore_config()
-        print(f"Failed to write config due to {str(e)}, restored to previous version.")
+    # 获取当前时间并格式化
+    current_time = datetime.datetime.now().strftime('%Y%m%d%H%M')
 
-def write_common_section(common_config):
-    backup_config()
-    try:
-        _, other_lines = read_common_section()
-        common_lines = common_config.split('\n')
-        with open(CONFIG_PATH, 'w', encoding='utf-8') as file:
-            file.write('[common]\n')
-            for line in common_lines:
-                file.write(line.rstrip() + '\n')
-            file.write('\n')
-            for line in other_lines:
-                file.write(line)
-        # 尝试读取新的配置文件，如果失败，恢复原始配置
-        read_config()
-    except Exception as e:
-        restore_config()
-        print(f"Failed to write common section due to {str(e)}, restored to previous version.")
+    # 构建备份文件路径
+    backup_filename = os.path.join(backup_folder, f'{current_time}_{filename}')
+
+    # 读取原文件内容并创建备份
+    if os.path.exists(filename):
+        shutil.copy2(filename, backup_filename)
+        print(f"Backup created at {backup_filename}")
+
+    # 写入新的配置文件内容
+    with open(filename, 'w') as configfile:
+        config.write(configfile)
+        print(f"New configuration written to {filename}")
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        username = request.form['username']
+        password = request.form['password']
+        if username == USERNAME and password == PASSWORD:
+            session['logged_in'] = True
+            return redirect(url_for('index'))
+        else:
+            return render_template('login.html', error='Invalid credentials')
+    return render_template('login.html')
+
+@app.route('/logout')
+def logout():
+    session.pop('logged_in', None)
+    return redirect(url_for('login'))
+
+def login_required(f):
+    def wrap(*args, **kwargs):
+        if 'logged_in' in session:
+            return f(*args, **kwargs)
+        else:
+            return redirect(url_for('login'))
+    wrap.__name__ = f.__name__
+    return wrap
 
 @app.route('/')
+@login_required
 def index():
     config = read_config()
-    common_section, _ = read_common_section()
-    return render_template('index.html', config=config, common_config=common_section)
+    print(config)
+    common_config = config['common'] if 'common' in config else {}
+    common_config_str = '\n'.join(f'{key} = {value}' for key, value in common_config.items())
+    return render_template('index.html', config=config, common_config=common_config_str)
+
+@app.route('/update_common', methods=['POST'])
+@login_required
+def update_common():
+    config = read_config()
+    common_config = request.form['common_config']
+    config['common'] = dict(line.split('=', 1) for line in common_config.splitlines() if '=' in line)
+    write_config(config)
+    return redirect(url_for('index'))
 
 @app.route('/update/<section>', methods=['POST'])
+@login_required
 def update(section):
     config = read_config()
-    if section in config:
-        new_section = request.form.get('new_section', section)
-        if new_section != section:
-            config[new_section] = config[section]
-            del config[section]
-            section = new_section
-        for key in request.form:
-            if key != 'new_section':
-                config[section][key] = request.form[key]
+    new_section = request.form['new_section']
+    type_ = request.form['type']
+    local_ip = request.form['local_ip']
+    local_port = request.form['local_port']
+    remote_port = request.form['remote_port']
+    custom_domains = request.form['custom_domains']
+
+    if new_section and new_section not in config:
+        config.remove_section(section)
+        config[new_section] = {
+            'type': type_,
+            'local_ip': local_ip,
+            'local_port': local_port,
+            'remote_port': remote_port,
+            'custom_domains': custom_domains
+        }
         write_config(config)
     return redirect(url_for('index'))
 
-@app.route('/update_common', methods=['POST'])
-def update_common():
-    common_config = request.form['common_config']
-    write_common_section(common_config)
+@app.route('/delete/<section>', methods=['POST'])
+@login_required
+def delete(section):
+    config = read_config()
+    config.remove_section(section)
+    write_config(config)
     return redirect(url_for('index'))
 
 @app.route('/add', methods=['POST'])
+@login_required
 def add():
     config = read_config()
     new_section = request.form['new_section']
@@ -117,11 +124,9 @@ def add():
     remote_port = request.form['remote_port']
     custom_domains = request.form['custom_domains']
 
-    # 使用自定义类型如果选择了“其他”
     if type_ == 'other' and custom_type:
         type_ = custom_type
 
-    # 确保 new_section 以 type 结尾
     suffix = f'_{type_}'
     if not new_section.endswith(suffix):
         new_section = new_section.rstrip('_tcp').rstrip('_udp').rstrip(f'_{type_}') + suffix
@@ -137,15 +142,8 @@ def add():
         write_config(config)
     return redirect(url_for('index'))
 
-@app.route('/delete/<section>', methods=['POST'])
-def delete(section):
-    config = read_config()
-    if section in config:
-        del config[section]
-        write_config(config)
-    return redirect(url_for('index'))
-
 @app.route('/debug', methods=['GET', 'POST'])
+@login_required
 def debug():
     if request.method == 'POST':
         new_config_content = request.form['config_content']
@@ -157,7 +155,6 @@ def debug():
         config_content = configfile.read()
 
     return render_template('debug.html', config_content=config_content)
-
 
 if __name__ == '__main__':
     app.run(debug=True)
