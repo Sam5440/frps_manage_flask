@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Config Editor</title>
+    <style>
+        textarea {
+            width: 100%;
+            height: 80vh;
+        }
+    </style>
+</head>
+<body>
+    <h1>Debug Config Editor</h1>
+    <form action="{{ url_for('debug') }}" method="post">
+        <textarea name="config_content">{{ config_content }}</textarea>
+        <br>
+        <input type="submit" value="Save">
+    </form>
+</body>
+</html>

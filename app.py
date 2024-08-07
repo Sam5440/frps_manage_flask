@@ -111,10 +111,20 @@ def add():
     config = read_config()
     new_section = request.form['new_section']
     type_ = request.form['type']
+    custom_type = request.form.get('custom_type', '').strip()
     local_ip = request.form['local_ip']
     local_port = request.form['local_port']
     remote_port = request.form['remote_port']
     custom_domains = request.form['custom_domains']
+
+    # 使用自定义类型如果选择了“其他”
+    if type_ == 'other' and custom_type:
+        type_ = custom_type
+
+    # 确保 new_section 以 type 结尾
+    suffix = f'_{type_}'
+    if not new_section.endswith(suffix):
+        new_section = new_section.rstrip('_tcp').rstrip('_udp').rstrip(f'_{type_}') + suffix
 
     if new_section and new_section not in config and type_ and local_ip and local_port and remote_port:
         config[new_section] = {
@@ -134,6 +144,20 @@ def delete(section):
         del config[section]
         write_config(config)
     return redirect(url_for('index'))
+
+@app.route('/debug', methods=['GET', 'POST'])
+def debug():
+    if request.method == 'POST':
+        new_config_content = request.form['config_content']
+        with open('frpc.ini', 'w') as configfile:
+            configfile.write(new_config_content)
+        return redirect(url_for('debug'))
+
+    with open('frpc.ini', 'r') as configfile:
+        config_content = configfile.read()
+
+    return render_template('debug.html', config_content=config_content)
+
 
 if __name__ == '__main__':
     app.run(debug=True)

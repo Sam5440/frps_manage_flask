@@ -75,6 +75,33 @@
         function validateForm() {
             return validateSectionName();
         }
+
+        function handleTypeChange() {
+            var typeSelect = document.getElementById('type-select');
+            var customTypeInput = document.getElementById('custom-type-input');
+            if (typeSelect.value === 'other') {
+                customTypeInput.style.display = 'inline';
+                customTypeInput.required = true;
+            } else {
+                customTypeInput.style.display = 'none';
+                customTypeInput.required = false;
+            }
+        }
+
+        function updateSectionName() {
+            var newSectionInput = document.getElementById('new-section-input');
+            var typeSelect = document.getElementById('type-select');
+            var customTypeInput = document.getElementById('custom-type-input');
+
+            var type = typeSelect.value === 'other' ? customTypeInput.value : typeSelect.value;
+
+            if (type) {
+                var suffix = '_' + type;
+                if (!newSectionInput.value.endsWith(suffix)) {
+                    newSectionInput.value = newSectionInput.value.replace(/(_tcp|_udp|_[^_]+)?$/, '') + suffix;
+                }
+            }
+        }
     </script>
 </head>
 <body>
@@ -131,7 +158,12 @@
                 <td colspan="7">
                     <form action="{{ url_for('add') }}" method="post" onsubmit="return validateForm()">
                         <input type="text" id="new-section-input" name="new_section" placeholder="New Section Name" required oninput="validateSectionName()">
-                        <input type="text" name="type" placeholder="Type" required>
+                        <select id="type-select" name="type" required onchange="handleTypeChange(); updateSectionName();">
+                            <option value="tcp">TCP</option>
+                            <option value="udp">UDP</option>
+                            <option value="other">其他</option>
+                        </select>
+                        <input type="text" id="custom-type-input" name="custom_type" placeholder="Custom Type" style="display: none;" oninput="updateSectionName()">
                         <input type="text" name="local_ip" placeholder="Local IP" required>
                         <input type="text" name="local_port" placeholder="Local Port" required>
                         <input type="text" name="remote_port" placeholder="Remote Port" required>
